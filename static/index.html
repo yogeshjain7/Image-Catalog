@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image catalog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF0F3; --panel:#FFFFFF; --ink:#151A24; --muted:#5A6376; --line:#D8DCE3; --soft:#F6F7F9;
+  --machine:#2457E6; --human:#D97B00; --human-ink:#9A5400; --composed:#0E8F80; --danger:#B93A2E;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"Bricolage Grotesque","IBM Plex Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.45 var(--font);display:flex;flex-direction:column;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--machine);outline-offset:2px}
+.top{display:flex;gap:24px;align-items:center;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top h1{font:700 22px/1 var(--display);margin:0;letter-spacing:-.01em;white-space:nowrap}
+#composeForm{display:flex;gap:8px;flex:1;min-width:280px;max-width:760px}
+#composeInput{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);min-width:0}
+#composeInput:focus{background:#fff}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{background:#2a3242}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn[aria-pressed=true]{background:var(--human);border-color:var(--human);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.detector-info{margin:0 0 0 auto;font-size:12px;color:var(--muted);max-width:300px;text-align:right}
+.detector-info b{color:var(--ink);font-weight:500}
+#composeMsg{padding:0 20px;font-size:13px}
+#composeMsg .msg{margin:10px 0 0;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}
+#composeMsg .msg.err{border-color:#E7B7B1;background:#FDF3F1}
+#composeMsg .msg.ok{border-color:#B5DDD7;background:#F0FAF8}
+#composeMsg .have{color:var(--muted);margin-top:4px}
+.layout{flex:1;display:grid;grid-template-columns:250px minmax(0,1fr) 340px;gap:16px;padding:16px 20px 20px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-width:0}
+.shelf{display:flex;flex-direction:column;max-height:calc(100vh - 150px);position:sticky;top:16px;align-self:start}
+.shelf-head{padding:12px;border-bottom:1px solid var(--line);display:flex;gap:8px}
+.shelf ul{list-style:none;margin:0;padding:6px;overflow:auto}
+.shelf li button{width:100%;display:flex;gap:10px;align-items:center;padding:8px;border:1px solid transparent;background:none;border-radius:8px;cursor:pointer;text-align:left}
+.shelf li button:hover{background:var(--soft)}
+.shelf li button[aria-current=true]{background:#EAF0FE;border-color:#C5D4FA}
+.thumb{width:48px;height:48px;border-radius:6px;background:#fff;border:1px solid var(--line);object-fit:contain;flex:none}
+.li-name{font-weight:500;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li-sub{color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty p{margin:0 0 14px}
+.workbench{display:flex;flex-direction:column;gap:12px;min-width:0}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px}
+.toolbar .title{font:600 17px/1.2 var(--display);margin-right:auto;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);align-items:center;flex-wrap:wrap}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.sw{width:12px;height:12px;border-radius:3px;border:2px solid;display:inline-block}
+.rerun{display:inline-flex;align-items:stretch}
+.rerun select{border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px;padding:5px 8px;background:var(--soft);font-size:13px}
+.rerun .btn{border-radius:0 8px 8px 0}
+#banner{display:none;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid var(--line);background:var(--panel)}
+#banner.show{display:block}
+#banner.warn{background:#FFF7E8;border-color:#F0D49A}
+#banner.bad{background:#FDF3F1;border-color:#E7B7B1}
+#banner.note{background:var(--soft)}
+.stage{padding:16px;display:flex;justify-content:center;align-items:flex-start;background:
+  repeating-conic-gradient(#f4f5f7 0 25%,#fff 0 50%) 0 0/20px 20px;min-height:240px;overflow:auto}
+#frame{position:relative;display:inline-block;max-width:100%;line-height:0;box-shadow:0 0 0 1px var(--line),0 6px 24px rgba(21,26,36,.08);background:#fff}
+#img{display:block;max-width:100%;max-height:68vh;width:auto;height:auto}
+#boxes{position:absolute;inset:0;touch-action:none}
+#boxes.drawing{cursor:crosshair}
+.box{position:absolute;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 7%,transparent);cursor:move;line-height:1.2}
+.box.sel{background:color-mix(in srgb,var(--c) 16%,transparent);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--c)}
+.box.pending{border-style:dashed}
+.box.low{border-style:dotted}
+.tag{position:absolute;left:-2px;bottom:100%;margin-bottom:2px;background:var(--c);color:#fff;font:500 12px/1 var(--font);padding:3px 6px;border-radius:4px;white-space:nowrap;pointer-events:none}
+.tag.in{bottom:auto;top:0;margin:0}
+.h{position:absolute;width:12px;height:12px;background:#fff;border:2px solid var(--c);border-radius:3px}
+.h.nw{left:-7px;top:-7px;cursor:nwse-resize}.h.ne{right:-7px;top:-7px;cursor:nesw-resize}
+.h.sw{left:-7px;bottom:-7px;cursor:nesw-resize}.h.se{right:-7px;bottom:-7px;cursor:nwse-resize}
+.hint{padding:0 14px 12px;color:var(--muted);font-size:12px}
+.inspector{display:flex;flex-direction:column;gap:16px;align-self:start}
+.sec{padding:14px 16px}
+.sec+.sec{border-top:1px solid var(--line)}
+.sec h2{font:600 15px/1.2 var(--display);margin:0 0 10px}
+.sec h3{font:600 12px/1.2 var(--font);margin:12px 0 6px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:4px 10px;margin:0;font-size:13px}
+.kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.auto-group{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+label.f{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+label.f input,label.f textarea{display:block;width:100%;margin-top:3px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font-size:14px}
+label.f textarea{resize:vertical;min-height:54px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.olist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.olist button{width:100%;display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;padding:7px 8px;border:1px solid transparent;background:none;border-radius:8px;cursor:pointer;text-align:left}
+.olist button:hover{background:var(--soft)}
+.olist button[aria-current=true]{background:#F4F6FB;border-color:var(--line)}
+.olist .sub{color:var(--muted);font-size:12px}
+.chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:500;border:1px solid}
+.chip.auto{color:var(--machine);border-color:#C5D4FA;background:#EEF3FE}
+.chip.edited,.chip.manual{color:var(--human-ink);border-color:#F0D49A;background:#FFF7E8}
+.chip.composed{color:var(--composed);border-color:#B5DDD7;background:#F0FAF8}
+.prov{font-size:13px;color:var(--muted);margin:8px 0 12px}
+.prov b{color:var(--ink);font-weight:500}
+.review{color:var(--human-ink);font-size:12px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .15s}
+#toast.show{opacity:1}
+#toast.err{background:var(--danger)}
+@media (max-width:1100px){.layout{grid-template-columns:220px minmax(0,1fr)}.inspector{grid-column:1/-1}}
+@media (max-width:720px){.layout{grid-template-columns:1fr}.shelf{position:static;max-height:260px}.top h1{width:100%}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Image catalog</h1>
+  <form id="composeForm" aria-label="Compose a new image from catalog images">
+    <input id="composeInput" type="text" autocomplete="off" aria-label="Describe the composite"
+           placeholder="Describe a composite, e.g. one red apple and one orange">
+    <button class="btn primary" id="composeBtn" type="submit">Compose</button>
+  </form>
+  <p id="detectorInfo" class="detector-info"></p>
+</header>
+<div id="composeMsg" role="status" aria-live="polite"></div>
+
+<main class="layout">
+  <aside class="panel shelf" aria-label="Catalog">
+    <div class="shelf-head">
+      <label class="btn small" for="fileInput">Add image</label>
+      <input id="fileInput" type="file" accept="image/*" hidden>
+    </div>
+    <ul id="list"></ul>
+    <div id="emptyShelf" class="empty" hidden>
+      <p>The catalog is empty. Add an image, or load the sample set to try detection and composites.</p>
+      <button class="btn primary" id="loadSamples" type="button">Load sample images</button>
+    </div>
+  </aside>
+
+  <section class="workbench" aria-label="Selected image">
+    <div class="panel toolbar" id="toolbar" hidden>
+      <div class="title" id="title"></div>
+      <div class="legend" aria-label="Box colours">
+        <span><i class="sw" style="color:var(--machine)"></i>Detected</span>
+        <span><i class="sw" style="color:var(--human)"></i>Added or corrected by you</span>
+        <span><i class="sw" style="color:var(--composed)"></i>Placed by composer</span>
+      </div>
+      <button class="btn small" id="drawBtn" type="button" aria-pressed="false">Draw a box</button>
+      <div class="rerun">
+        <select id="rerunMode" aria-label="What re-running detection should do">
+          <option value="keep_manual">Keep my edits</option>
+          <option value="replace_all">Replace everything</option>
+        </select>
+        <button class="btn small" id="rerunBtn" type="button">Re-run detection</button>
+      </div>
+      <button class="btn small danger" id="delImgBtn" type="button">Delete image</button>
+    </div>
+    <div id="banner" role="status"></div>
+    <div class="panel" id="stagePanel" hidden>
+      <div class="stage"><div id="frame"><img id="img" alt=""><div id="boxes"></div></div></div>
+      <p class="hint" id="hint">Click a box to edit it. Drag to move, drag a corner to resize.</p>
+    </div>
+    <div class="panel empty" id="noSel"><p>Select an image from the catalog.</p></div>
+  </section>
+
+  <aside class="panel inspector" id="inspector" hidden aria-label="Details">
+    <div class="sec" id="metaSec"></div>
+    <div class="sec" id="objSec"></div>
+    <div class="sec" id="editSec"></div>
+  </aside>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const S = { images: [], cur: null, sel: null, pending: null, draw: false, drag: null };
+const LOW = 0.6;
+
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "style") el.setAttribute("style", v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
+  return el;
+}
+async function api(path, opts = {}) {
+  const isForm = opts.body instanceof FormData;
+  const r = await fetch(path, {
+    method: opts.method || "GET",
+    headers: opts.body && !isForm ? { "Content-Type": "application/json" } : {},
+    body: opts.body ? (isForm ? opts.body : JSON.stringify(opts.body)) : undefined,
+  });
+  if (r.status === 204) return null;
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(data.error || r.statusText); e.data = data; e.status = r.status; throw e; }
+  return data;
+}
+let toastTimer;
+function toast(msg, err = false) {
+  const t = $("#toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.className = ""), 2800);
+}
+const srcColor = s => s === "auto" ? "var(--machine)" : s === "composed" ? "var(--composed)" : "var(--human)";
+const srcText = s => ({ auto: "Detected by AI", edited: "Corrected by you", manual: "Added by you", composed: "Placed by composer" }[s] || s);
+const fmtTime = t => t ? new Date(t * 1000).toLocaleString() : "-";
+const round = v => Math.round(v);
+
+/* ------------------------------------------------------------------ data flow */
+async function loadList(keepSel = true) {
+  S.images = await api("/api/images");
+  renderList();
+  if (!S.images.length) { S.cur = null; renderAll(); }
+  else if (!keepSel || !S.cur) await selectImage(S.images[0].id);
+}
+async function selectImage(id) {
+  S.cur = await api(`/api/images/${id}`);
+  S.sel = null; S.pending = null; setDraw(false);
+  renderAll();
+}
+async function refreshCurrent() {
+  S.cur = await api(`/api/images/${S.cur.id}`);
+  S.images = await api("/api/images");
+  renderAll();
+}
+
+/* ------------------------------------------------------------------ rendering */
+function renderAll() { renderList(); renderToolbar(); renderStage(); renderInspector(); }
+
+function renderList() {
+  const ul = $("#list"); ul.replaceChildren();
+  $("#emptyShelf").hidden = S.images.length > 0;
+  for (const im of S.images) {
+    const sub = im.kind === "composite" ? "Composite" : im.detection_status === "failed" ? "Detection failed"
+      : im.object_count ? `${im.object_count} object${im.object_count > 1 ? "s" : ""}` : "No objects";
+    ul.append(h("li", {}, h("button", { type: "button", "aria-current": S.cur && S.cur.id === im.id, onclick: () => selectImage(im.id) },
+      h("img", { class: "thumb", src: `/api/images/${im.id}/file?v=${Math.round(im.updated_at)}`, alt: "" }),
+      h("span", { style: "min-width:0" },
+        h("span", { class: "li-name" }, im.display_name),
+        h("span", { class: "li-sub" }, im.manually_modified ? h("i", { class: "dot", style: "background:var(--human)", title: "Has your corrections" }) : null, sub)))));
+  }
+}
+
+function renderToolbar() {
+  const on = !!S.cur;
+  $("#toolbar").hidden = !on; $("#stagePanel").hidden = !on; $("#noSel").hidden = on;
+  $("#inspector").hidden = !on;
+  if (!on) { $("#banner").className = ""; return; }
+  $("#title").textContent = S.cur.display_name;
+  const mod = S.cur.manually_modified;
+  $("#rerunMode").value = mod ? "keep_manual" : "replace_all";
+  const b = $("#banner"), c = S.cur, low = c.objects.filter(o => o.source === "auto" && o.confidence < LOW).length;
+  let cls = "", msg = null;
+  if (c.detection_status === "failed") { cls = "bad"; msg = `Detection failed (${c.error}). Your existing objects were kept - fix them by hand or re-run detection.`; }
+  else if (c.detection_status === "no_objects" && !c.objects.length) { cls = "warn"; msg = "No objects were detected. Choose \u201cDraw a box\u201d and drag over an object to add it yourself."; }
+  else if (c.detection_notes.some(n => /photograph|vision/i.test(n)) && (low || !c.objects.length || c.detection_notes.some(n => /unavailable|set GEMINI/i.test(n)))) {
+    cls = "warn"; msg = c.detection_notes.join(" ") + (low ? " Check the detected object and correct it if needed." : "");
+  }
+  else if (low) { cls = "warn"; msg = `${low} detected object${low > 1 ? "s have" : " has"} low confidence (dotted box). Check ${low > 1 ? "them" : "it"} and correct if needed.`; }
+  else if (c.detection_notes.length && c.detection_status !== "composed") { cls = "note"; msg = c.detection_notes.join(" "); }
+  b.className = msg ? "show " + cls : ""; b.textContent = msg || "";
+}
+
+function pct(box) {
+  const W = S.cur.width, H = S.cur.height;
+  return `left:${box.x / W * 100}%;top:${box.y / H * 100}%;width:${box.w / W * 100}%;height:${box.h / H * 100}%`;
+}
+function placeBox(el, box) {
+  const W = S.cur.width, H = S.cur.height;
+  el.style.left = box.x / W * 100 + "%"; el.style.top = box.y / H * 100 + "%";
+  el.style.width = box.w / W * 100 + "%"; el.style.height = box.h / H * 100 + "%";
+}
+function boxEl(o, extra = {}) {
+  const sel = S.sel === o.id;
+  const el = h("div", { class: "box" + (sel ? " sel" : "") + (o.source === "auto" && o.confidence < LOW ? " low" : "") + (extra.pending ? " pending" : ""),
+    style: `--c:${srcColor(extra.pending ? "manual" : o.source)};${pct(o)}`, "data-id": o.id });
+  el.append(h("span", { class: "tag" + (o.y / S.cur.height < 0.05 ? " in" : "") },
+    o.label || "new object", o.source === "auto" && o.confidence < LOW ? " ?" : ""));
+  if (sel || extra.pending) for (const k of ["nw", "ne", "sw", "se"]) el.append(h("i", { class: "h " + k, "data-h": k }));
+  return el;
+}
+function renderStage() {
+  if (!S.cur) return;
+  const img = $("#img"), want = `/api/images/${S.cur.id}/file?v=${Math.round(S.cur.updated_at)}`;
+  if (img.getAttribute("src") !== want) img.src = want;
+  img.alt = S.cur.display_name;
+  const boxes = $("#boxes"); boxes.replaceChildren();
+  boxes.classList.toggle("drawing", S.draw);
+  for (const o of S.cur.objects) boxes.append(boxEl(o));
+  if (S.pending) boxes.append(boxEl({ ...S.pending, id: "pending", label: S.pending.label || "", source: "manual" }, { pending: true }));
+  $("#hint").textContent = S.draw ? "Drag on the image to draw a box around an object. Press Esc to cancel."
+    : "Click a box to edit it. Drag to move, drag a corner to resize.";
+}
+
+function renderInspector() {
+  if (!S.cur) return;
+  const c = S.cur;
+  // --- image details: machine-written vs yours -----------------------------------
+  const meta = $("#metaSec"); meta.replaceChildren(...[
+    h("h2", {}, "Image"),
+    h("label", { class: "f" }, "Display name",
+      h("input", { id: "dispName", value: c.display_name, onchange: e => patchImage({ display_name: e.target.value }) })),
+    h("label", { class: "f" }, "Notes",
+      h("textarea", { id: "userNotes", onchange: e => patchImage({ user_notes: e.target.value }) }, c.user_notes)),
+    h("h3", {}, "Written by the system (read-only)"),
+    h("dl", { class: "kv auto-group" },
+      ...[["Catalog key", c.name], ["Size", `${c.width} \u00d7 ${c.height}`], ["Type", c.kind],
+        ["Detection", c.detection_status.replace("_", " ")], ["Detector", c.detector || "-"], ["Last run", fmtTime(c.detected_at)]]
+        .flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])),
+    c.composition ? h("details", { style: "margin-top:8px;font-size:13px" }, h("summary", {}, "How this composite was made"),
+      h("p", { class: "prov" }, `\u201c${c.composition.instruction}\u201d \u2014 layout: ${c.composition.layout}. Sources: `,
+        [...new Set(c.composition.placements.map(p => p.source_image))].join(", "))) : null
+  ].filter(Boolean));
+  const ta = $("#userNotes"); if (ta) ta.value = c.user_notes;
+
+  // --- object list ------------------------------------------------------------------
+  const obj = $("#objSec"); obj.replaceChildren(h("h2", {}, `Objects (${c.objects.length})`));
+  if (!c.objects.length) obj.append(h("p", { class: "prov" }, "None yet. Draw a box on the image to add one."));
+  const ul = h("ul", { class: "olist" });
+  for (const o of c.objects) ul.append(h("li", {}, h("button", { type: "button", "aria-current": S.sel === o.id, onclick: () => selectObject(o.id) },
+    h("i", { class: "dot", style: `background:${srcColor(o.source)}` }),
+    h("span", {}, o.label, " ", h("span", { class: "sub" }, o.color || ""),
+      o.source === "auto" && o.confidence < LOW ? h("span", { class: "review" }, "  needs review") : null),
+    h("span", { class: "sub" }, o.confidence.toFixed(2)))));
+  obj.append(ul);
+
+  // --- object editor ----------------------------------------------------------------
+  const ed = $("#editSec"); ed.replaceChildren();
+  const o = S.pending ? null : c.objects.find(x => x.id === S.sel);
+  if (S.pending) { ed.hidden = false; return renderEditor(ed, { pending: true, ...S.pending }); }
+  if (!o) { ed.hidden = true; return; }
+  ed.hidden = false; renderEditor(ed, o);
+}
+
+function provenance(o) {
+  if (o.source === "auto") return h("p", { class: "prov" }, h("span", { class: "chip auto" }, "Detected by AI"), " Change any field to take over. Your version then wins until detection is re-run with \u201cReplace everything\u201d.");
+  if (o.source === "manual") return h("p", { class: "prov" }, h("span", { class: "chip manual" }, "Added by you"), " Re-running detection will not remove it unless you choose \u201cReplace everything\u201d.");
+  if (o.source === "composed") return h("p", { class: "prov" }, h("span", { class: "chip composed" }, "Placed by composer"), " Exact by construction. Editing it marks it as yours.");
+  const a = o.auto_values || {};
+  return h("p", { class: "prov" }, h("span", { class: "chip edited" }, "Corrected by you"), ` Changed: ${o.edited_fields.join(", ")}. `,
+    h("b", {}, "Detector said: "), `${a.label}${a.color ? ", " + a.color : ""}, ${a.x},${a.y} ${a.w}\u00d7${a.h}, confidence ${a.confidence}`);
+}
+
+function renderEditor(root, o) {
+  const pending = !!o.pending;
+  const f = (id, label, val, type = "text", extra = {}) =>
+    h("label", { class: "f" }, label, h("input", { id, type, value: val ?? "", ...extra, oninput: markDirty }));
+  root.append(h("h2", {}, pending ? "New object" : "Object"),
+    pending ? h("p", { class: "prov" }, h("span", { class: "chip manual" }, "Added by you"), " Name it, then save.") : provenance(o),
+    f("e_label", "Label", o.label), f("e_color", "Colour", o.color),
+    f("e_conf", "Confidence (0\u20131)", o.confidence ?? 1, "number", { min: 0, max: 1, step: 0.01 }),
+    h("div", { class: "grid4" }, f("e_x", "X", round(o.x), "number", { min: 0 }), f("e_y", "Y", round(o.y), "number", { min: 0 }),
+      f("e_w", "Width", round(o.w), "number", { min: 1 }), f("e_h", "Height", round(o.h), "number", { min: 1 })),
+    h("div", { class: "row" },
+      h("button", { class: "btn primary", id: "saveObj", type: "button", disabled: !pending, onclick: () => saveObject(o) }, pending ? "Add object" : "Save changes"),
+      pending ? h("button", { class: "btn", type: "button", onclick: () => { S.pending = null; renderAll(); } }, "Cancel")
+              : h("button", { class: "btn danger", type: "button", onclick: () => deleteObject(o) }, "Delete object")));
+  if (pending) setTimeout(() => $("#e_label")?.focus(), 0);
+}
+function markDirty() {
+  const b = $("#saveObj"); if (b) b.disabled = false;
+  if (S.pending) { S.pending.label = $("#e_label").value; }
+  const box = readBox(); if (box) liveBox(box);
+}
+function readBox() {
+  const g = id => Number($("#" + id)?.value);
+  const b = { x: g("e_x"), y: g("e_y"), w: g("e_w"), h: g("e_h") };
+  return Object.values(b).every(Number.isFinite) ? b : null;
+}
+function liveBox(b) {  // reflect typed numbers on the image immediately
+  const id = S.pending ? "pending" : S.sel;
+  const el = $(`#boxes .box[data-id="${id}"]`);
+  if (el && b.w > 0 && b.h > 0) placeBox(el, b);
+}
+
+/* ------------------------------------------------------------------ actions */
+function selectObject(id) { S.sel = id; S.pending = null; setDraw(false); renderAll(); }
+function setDraw(on) {
+  S.draw = on; const b = $("#drawBtn"); b.setAttribute("aria-pressed", on); b.textContent = on ? "Drawing\u2026 (Esc to cancel)" : "Draw a box";
+  $("#boxes")?.classList.toggle("drawing", on);
+}
+async function patchImage(fields) {
+  try { S.cur = { ...S.cur, ...(await api(`/api/images/${S.cur.id}`, { method: "PATCH", body: fields })) }; await refreshCurrent(); toast("Saved"); }
+  catch (e) { toast(e.message, true); }
+}
+async function saveObject(o) {
+  const payload = { label: $("#e_label").value, color: $("#e_color").value, confidence: Number($("#e_conf").value), ...readBox() };
+  try {
+    if (S.pending) {
+      const created = await api(`/api/images/${S.cur.id}/objects`, { method: "POST", body: payload });
+      S.pending = null; S.sel = created.id; await refreshCurrent(); toast("Object added - it stays until you replace everything");
+    } else {
+      await api(`/api/objects/${o.id}`, { method: "PATCH", body: payload });
+      await refreshCurrent(); toast("Saved - your version is now the source of truth");
+    }
+  } catch (e) { toast(e.message, true); }
+}
+async function deleteObject(o) {
+  try { await api(`/api/objects/${o.id}`, { method: "DELETE" }); S.sel = null; await refreshCurrent(); toast("Object deleted"); }
+  catch (e) { toast(e.message, true); }
+}
+
+$("#drawBtn").onclick = () => { S.pending = null; S.sel = null; setDraw(!S.draw); renderAll(); };
+$("#rerunBtn").onclick = async () => {
+  const mode = $("#rerunMode").value;
+  if (mode === "replace_all" && S.cur.manually_modified &&
+      !confirm("Replace everything discards your added and corrected objects. Continue?")) return;
+  try {
+    const r = await api(`/api/images/${S.cur.id}/detect`, { method: "POST", body: { mode } });
+    S.sel = null; S.pending = null; await refreshCurrent();
+    toast(r.run.failed ? "Detection failed - your objects were kept" : `Detection finished: ${r.run.added} new, ${r.run.kept} of yours kept`, r.run.failed);
+  } catch (e) { toast(e.message, true); }
+};
+$("#delImgBtn").onclick = async () => {
+  if (!confirm(`Delete \u201c${S.cur.display_name}\u201d from the catalog?`)) return;
+  await api(`/api/images/${S.cur.id}`, { method: "DELETE" }); S.cur = null; await loadList(false);
+};
+$("#fileInput").onchange = async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append("file", file);
+  try { const im = await api("/api/images", { method: "POST", body: fd }); S.images = await api("/api/images"); await selectImage(im.id); toast(`Added \u201c${im.display_name}\u201d`); }
+  catch (err) { toast(err.message, true); }
+  e.target.value = "";
+};
+$("#loadSamples").onclick = async () => { await api("/api/samples/load", { method: "POST" }); S.cur = null; await loadList(false); };
+
+$("#composeForm").onsubmit = async e => {
+  e.preventDefault();
+  const text = $("#composeInput").value.trim(); if (!text) return;
+  const box = $("#composeMsg"), btn = $("#composeBtn"); btn.disabled = true; btn.textContent = "Composing\u2026";
+  try {
+    const im = await api("/api/compose", { method: "POST", body: { instruction: text } });
+    box.replaceChildren(h("div", { class: "msg ok" }, `Saved as \u201c${im.display_name}\u201d with ${im.objects.length} placed object${im.objects.length === 1 ? "" : "s"}, built from your catalog images.`));
+    S.images = await api("/api/images"); await selectImage(im.id);
+  } catch (err) {
+    const d = err.data || {};
+    const parts = [h("div", {}, err.status === 422 ? "Nothing was created. These catalog images are missing, and the composer will not substitute generated look-alikes:" : err.message)];
+    (d.missing || []).forEach(m => parts.push(h("div", {}, `\u2022 \u201c${m.request}\u201d: ${m.reason}`)));
+    if (d.available) parts.push(h("div", { class: "have" }, "In the catalog: " + d.available.filter(x => !x.startsWith("obj:")).join(", ")));
+    box.replaceChildren(h("div", { class: "msg err" }, parts));
+  } finally { btn.disabled = false; btn.textContent = "Compose"; }
+};
+
+/* ------------------------------------------------------------------ pointer interaction on the image */
+const frameBox = () => $("#boxes").getBoundingClientRect();
+function toImg(e) {
+  const r = frameBox();
+  return { x: (e.clientX - r.left) / r.width * S.cur.width, y: (e.clientY - r.top) / r.height * S.cur.height };
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+$("#boxes").addEventListener("pointerdown", e => {
+  if (!S.cur) return;
+  const p = toImg(e), W = S.cur.width, H = S.cur.height;
+  const boxNode = e.target.closest(".box");
+  if (S.draw && !boxNode) {
+    S.pending = { x: p.x, y: p.y, w: 1, h: 1, label: "" }; S.sel = null;
+    S.drag = { mode: "draw", origin: p }; renderAll(); e.preventDefault(); startDrag(); return;
+  }
+  if (!boxNode) { if (S.sel) { S.sel = null; renderAll(); } return; }
+  const id = boxNode.dataset.id;
+  if (id === "pending" && !e.target.dataset.h) return;
+  const o = id === "pending" ? S.pending : S.cur.objects.find(x => String(x.id) === id);
+  if (!o) return;
+  if (id !== "pending" && S.sel !== o.id) { S.sel = o.id; renderAll(); }
+  S.drag = { mode: e.target.dataset.h ? "resize" : "move", handle: e.target.dataset.h, id: id === "pending" ? "pending" : o.id,
+             origin: p, client: { x: e.clientX, y: e.clientY }, orig: { x: o.x, y: o.y, w: o.w, h: o.h }, moved: false };
+  e.preventDefault(); startDrag();
+});
+function startDrag() {
+  window.addEventListener("pointermove", onDrag); window.addEventListener("pointerup", endDrag, { once: true });
+}
+function onDrag(e) {
+  const d = S.drag; if (!d) return;
+  const p = toImg(e), W = S.cur.width, H = S.cur.height;
+  let b;
+  if (d.mode === "draw") {
+    const x0 = clamp(Math.min(d.origin.x, p.x), 0, W), y0 = clamp(Math.min(d.origin.y, p.y), 0, H);
+    const x1 = clamp(Math.max(d.origin.x, p.x), 0, W), y1 = clamp(Math.max(d.origin.y, p.y), 0, H);
+    b = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+  } else {
+    const dx = p.x - d.origin.x, dy = p.y - d.origin.y, o = d.orig;
+    d.moved = d.moved || Math.hypot(e.clientX - d.client.x, e.clientY - d.client.y) > 6;   // screen px: ignore click jitter
+    if (!d.moved) return;
+    if (d.mode === "move") b = { x: clamp(o.x + dx, 0, W - o.w), y: clamp(o.y + dy, 0, H - o.h), w: o.w, h: o.h };
+    else {
+      let x0 = o.x, y0 = o.y, x1 = o.x + o.w, y1 = o.y + o.h;
+      if (d.handle.includes("w")) x0 = clamp(o.x + dx, 0, x1 - 4); else x1 = clamp(o.x + o.w + dx, x0 + 4, W);
+      if (d.handle.includes("n")) y0 = clamp(o.y + dy, 0, y1 - 4); else y1 = clamp(o.y + o.h + dy, y0 + 4, H);
+      b = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+  }
+  d.box = b;
+  const el = $(`#boxes .box[data-id="${d.mode === "draw" ? "pending" : d.id}"]`); if (el) placeBox(el, b);
+  for (const [k, id] of [["x", "e_x"], ["y", "e_y"], ["w", "e_w"], ["h", "e_h"]]) { const i = $("#" + id); if (i) i.value = round(b[k]); }
+}
+async function endDrag() {
+  window.removeEventListener("pointermove", onDrag);
+  const d = S.drag; S.drag = null; if (!d) return;
+  if (d.mode === "draw") {
+    const b = d.box;
+    if (!b || b.w < 6 || b.h < 6) { S.pending = null; toast("Drag a larger area to draw a box", true); }
+    else { S.pending = { ...b, label: "" }; setDraw(false); }
+    renderAll(); return;
+  }
+  if (!d.moved || !d.box) return;
+  if (d.id === "pending") { Object.assign(S.pending, d.box); renderAll(); return; }
+  const same = ["x", "y", "w", "h"].every(k => round(d.box[k]) === round(d.orig[k]));
+  if (same) { renderAll(); return; }
+  try {
+    await api(`/api/objects/${d.id}`, { method: "PATCH", body: { x: round(d.box.x), y: round(d.box.y), w: round(d.box.w), h: round(d.box.h) } });
+    await refreshCurrent(); toast("Saved - your version is now the source of truth");
+  } catch (e) { toast(e.message, true); await refreshCurrent(); }
+}
+window.addEventListener("keydown", e => {
+  if (e.key === "Escape") { S.pending = null; setDraw(false); renderAll(); }
+  if ((e.key === "Delete") && S.sel && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+    const o = S.cur.objects.find(x => x.id === S.sel); if (o) deleteObject(o);
+  }
+});
+
+api("/api/config").then(c => {
+  const el = $("#detectorInfo");
+  el.replaceChildren(c.vision_model
+    ? h("span", {}, "Detection: offline for flat images, ", h("b", {}, c.vision_model), " for photographs")
+    : h("span", {}, "Detection: offline only. Add an API key to handle photographs (see README)."));
+}).catch(() => {});
+loadList().catch(e => toast(e.message, true));
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+data/
+demo_output/data/
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env
+vision_check.png

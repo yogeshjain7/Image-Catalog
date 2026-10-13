@@ -1,0 +1,6 @@
+flask>=3.0
+numpy>=1.26
+opencv-python-headless>=4.9
+pillow>=10.0
+scipy>=1.11
+requests>=2.31
